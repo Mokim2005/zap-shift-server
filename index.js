@@ -453,46 +453,46 @@ async function run() {
     });
 
     //payment related apis
-    // app.post("/create-cheakout-session", async (req, res) => {
-    //   try {
-    //     const paymentInfo = req.body;
+    app.post("/create-cheakout-session", async (req, res) => {
+      try {
+        const paymentInfo = req.body;
 
-    //     // Validate cost
-    //     const amount = Number(paymentInfo.cost) * 100;
-    //     if (!amount || isNaN(amount)) {
-    //       return res.status(400).send({ error: "Invalid payment amount" });
-    //     }
+        // Validate cost
+        const amount = Number(paymentInfo.cost) * 100;
+        if (!amount || isNaN(amount)) {
+          return res.status(400).send({ error: "Invalid payment amount" });
+        }
 
-    //     const session = await stripe.checkout.sessions.create({
-    //       line_items: [
-    //         {
-    //           price_data: {
-    //             currency: "usd", // FIXED
-    //             unit_amount: amount,
-    //             product_data: {
-    //               name: paymentInfo.parcelName,
-    //             },
-    //           },
-    //           quantity: 1,
-    //         },
-    //       ],
-    //       mode: "payment",
-    //       metadata: {
-    //         parcelId: paymentInfo.parcelId,
-    //         parcelName: paymentInfo.parcelName,
-    //       },
-    //       customer_email: paymentInfo.senderEmail,
+        const session = await stripe.checkout.sessions.create({
+          line_items: [
+            {
+              price_data: {
+                currency: "usd", // FIXED
+                unit_amount: amount,
+                product_data: {
+                  name: paymentInfo.parcelName,
+                },
+              },
+              quantity: 1,
+            },
+          ],
+          mode: "payment",
+          metadata: {
+            parcelId: paymentInfo.parcelId,
+            parcelName: paymentInfo.parcelName,
+          },
+          customer_email: paymentInfo.senderEmail,
 
-    //       success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-    //       cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-canceled`, // FIXED
-    //     });
+          success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-canceled`, // FIXED
+        });
 
-    //     res.send({ url: session.url });
-    //   } catch (error) {
-    //     console.log("Stripe Error:", error.message);
-    //     res.status(500).send({ error: error.message });
-    //   }
-    // });
+        res.send({ url: session.url });
+      } catch (error) {
+        console.log("Stripe Error:", error.message);
+        res.status(500).send({ error: error.message });
+      }
+    });
 
     app.patch("/payment-success", async (req, res) => {
       const sessionId = req.query.session_id;
