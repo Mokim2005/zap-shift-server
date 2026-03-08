@@ -11,7 +11,7 @@ const port = process.env.PORT || 3000;
 const admin = require("firebase-admin");
 
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
-  "utf8"
+  "utf8",
 );
 const serviceAccount = JSON.parse(decoded);
 
@@ -36,24 +36,24 @@ app.use(express.json());
 app.use(cors());
 
 const verifyFBToken = async (req, res, next) => {
-  // console.log("headers in the middleware", req.headers.authorization);
-  const token = req.headers.authorization;
+  const authHeader = req.headers.authorization;
 
-  if (!token) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).send({ message: "unauthorized access" });
   }
+
+  const idToken = authHeader.split(" ")[1];
 
   try {
     const idToken = token.split(" ")[1];
     const decoded = await admin.auth().verifyIdToken(idToken);
-    console.log("decoded id the token", decoded);
     req.decoded_email = decoded.email;
     next();
   } catch (err) {
-    return res.status(401).send({ message: "unauthorize access" });
+    console.error("Firebase verify error:", err);
+    return res.status(401).send({ message: "unauthorized access" });
   }
 };
-
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -160,12 +160,12 @@ async function run() {
           };
           const userResult = await userCollection.updateOne(
             useQuery,
-            updateUser
+            updateUser,
           );
         }
 
         res.send(result);
-      }
+      },
     );
 
     app.delete("/riders/:id", verifyFBToken, async (req, res) => {
@@ -187,24 +187,32 @@ async function run() {
     };
 
     //user related apis
-
     app.get("/users", verifyFBToken, async (req, res) => {
-      const searchText = req.query.searchText;
-      const query = {};
-      if (searchText) {
-        // query.displayName = {$regex: searchText, $options: 'i '}
-        query.$or = [
-          { displayName: { $regex: searchText, $options: "i " } },
-          { email: { $regex: searchText, $options: "i" } },
-        ];
-      }
+      try {
+        const searchText = req.query.searchText?.trim() || "";
 
-      const cursor = userCollection
-        .find(query)
-        .sort({ createdAt: -1 })
-      
-      const result = await cursor.toArray();
-      res.send(result);
+        let query = {};
+
+        if (searchText) {
+          query = {
+            $or: [
+              { displayName: { $regex: searchText, $options: "i" } },
+              { email: { $regex: searchText, $options: "i" } },
+              { role: { $regex: searchText, $options: "i" } },
+            ],
+          };
+        }
+
+        const users = await userCollection
+          .find(query)
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        res.send(users);
+      } catch (error) {
+        console.error("User search error:", error);
+        res.status(500).send({ message: "Server error" });
+      }
     });
 
     app.patch(
@@ -222,7 +230,7 @@ async function run() {
         };
         const result = await userCollection.updateOne(query, updatedDoc);
         res.send(result);
-      }
+      },
     );
 
     app.get("/users/:email/role", async (req, res) => {
@@ -371,7 +379,7 @@ async function run() {
 
         const riderResult = await ridersCollection.updateOne(
           riderQuery,
-          riderUpdateDoc
+          riderUpdateDoc,
         );
       }
 
@@ -405,7 +413,7 @@ async function run() {
 
       const parcelResult = await parcelsCollection.updateOne(
         parcelQuery,
-        parcelUpdateDoc
+        parcelUpdateDoc,
       );
 
       // 2) Update Rider status (THIS IS THE FIX)
@@ -418,7 +426,7 @@ async function run() {
 
       const riderResult = await ridersCollection.updateOne(
         riderQuery,
-        riderUpdateDoc
+        riderUpdateDoc,
       );
 
       //log tracking
